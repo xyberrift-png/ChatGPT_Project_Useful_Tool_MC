@@ -63,8 +63,11 @@ class ModInstallerService:
         replace_duplicates: bool,
         progress: ProgressCallback | None = None,
     ) -> list[str]:
+        if not minecraft_dir.exists() or minecraft_dir.name.lower() != ".minecraft":
+            raise ValueError("Minecraft directory not found.")
+
         mods_dir = minecraft_dir / "mods"
-        mods_dir.mkdir(parents=True, exist_ok=True)
+        mods_dir.mkdir(exist_ok=True)
         installed: list[str] = []
 
         if mode == "overwrite":

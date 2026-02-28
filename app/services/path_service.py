@@ -2,7 +2,7 @@ from __future__ import annotations
 
 from pathlib import Path
 
-from app.utils.path_utils import get_app_root
+from app.utils.path_utils import get_app_root, get_minecraft_directory
 
 
 class PathService:
@@ -30,4 +30,4 @@ class PathService:
 
     @classmethod
     def default_minecraft_dir(cls) -> Path:
-        return cls.get_app_root() / ".minecraft"
+        return get_minecraft_directory()
