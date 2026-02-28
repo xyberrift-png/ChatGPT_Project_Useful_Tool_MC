@@ -1,22 +1,31 @@
 from __future__ import annotations
 
-import os
+import sys
 from pathlib import Path
 
 
 class PathService:
-    """Utility helpers for OS-specific paths."""
+    """Path utilities that work in both source and frozen distributions."""
 
     @staticmethod
-    def default_app_profiles_dir() -> Path:
-        appdata = os.getenv("APPDATA")
-        if appdata:
-            return Path(appdata) / "MinecraftPvPHub" / "profiles"
-        return Path.cwd() / "local_data" / "profiles"
+    def get_app_root() -> Path:
+        """Return application root for Python and PyInstaller execution modes."""
+        if getattr(sys, "frozen", False):
+            return Path(sys.executable).resolve().parent
+        return Path(__file__).resolve().parents[2]
 
-    @staticmethod
-    def default_minecraft_dir() -> Path:
-        appdata = os.getenv("APPDATA")
-        if appdata:
-            return Path(appdata) / ".minecraft"
-        return Path.home() / "AppData" / "Roaming" / ".minecraft"
+    @classmethod
+    def data_dir(cls) -> Path:
+        return cls.get_app_root() / "data"
+
+    @classmethod
+    def logs_dir(cls) -> Path:
+        return cls.get_app_root() / "logs"
+
+    @classmethod
+    def default_app_profiles_dir(cls) -> Path:
+        return cls.data_dir() / "profiles"
+
+    @classmethod
+    def default_minecraft_dir(cls) -> Path:
+        return cls.get_app_root() / ".minecraft"

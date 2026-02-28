@@ -1,6 +1,7 @@
 from __future__ import annotations
 
 import json
+import logging
 import os
 import shutil
 import sqlite3
@@ -8,8 +9,10 @@ from collections.abc import Callable
 from dataclasses import dataclass
 from pathlib import Path
 
+from app.data.db import DatabaseManager
 from app.services.security import SecurityService
 
+LOGGER = logging.getLogger(__name__)
 ProgressCallback = Callable[[int, int, str], None]
 
 
@@ -20,6 +23,8 @@ class Profile:
 
 
 class ProfileService:
+    """Service for local profile authentication and import/export."""
+
     def __init__(self, base_dir: Path) -> None:
         self.base_dir = base_dir
         self.base_dir.mkdir(parents=True, exist_ok=True)
@@ -42,6 +47,7 @@ class ProfileService:
         credentials = {"username": username, "password_hash": SecurityService.hash_password(password)}
         (profile_dir / "credentials.json").write_text(json.dumps(credentials, indent=2), encoding="utf-8")
         self._ensure_db(profile_dir)
+        LOGGER.info("Created profile: %s", username)
 
     def authenticate(self, username: str, password: str) -> Profile:
         profile_dir = self.base_dir / username
@@ -50,9 +56,14 @@ class ProfileService:
             raise ValueError("Profile not found")
         data = json.loads(credentials_path.read_text(encoding="utf-8"))
         if not SecurityService.verify_password(password, str(data.get("password_hash", ""))):
+            LOGGER.warning("Failed login attempt: %s", username)
             raise ValueError("Invalid username/password")
         self._ensure_db(profile_dir)
+        LOGGER.info("User logged in: %s", username)
         return Profile(username=username, profile_dir=profile_dir)
+
+    def ensure_profile_database(self, username: str) -> None:
+        self._ensure_db(self.base_dir / username)
 
     def export_profile(
         self,
@@ -92,6 +103,7 @@ class ProfileService:
         if destination.exists():
             raise ValueError("Profile already exists locally")
         self._copy_dir_with_progress(source_dir, destination, progress)
+        LOGGER.info("Imported profile: %s", username)
         return username
 
     @staticmethod
@@ -115,17 +127,5 @@ class ProfileService:
     @staticmethod
     def _ensure_db(profile_dir: Path) -> None:
         db_path = profile_dir / "records.db"
-        with sqlite3.connect(db_path) as conn:
-            conn.execute(
-                """
-                CREATE TABLE IF NOT EXISTS records (
-                    id INTEGER PRIMARY KEY AUTOINCREMENT,
-                    title TEXT NOT NULL,
-                    category TEXT NOT NULL,
-                    rating INTEGER NOT NULL,
-                    content TEXT NOT NULL,
-                    created_at TEXT NOT NULL,
-                    storage_filename TEXT NOT NULL
-                )
-                """
-            )
+        DatabaseManager(db_path).initialize()
+        LOGGER.info("Database initialized: %s", db_path)

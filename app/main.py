@@ -1,24 +1,82 @@
 from __future__ import annotations
 
+import logging
 import sys
+import traceback
+from types import TracebackType
 
-from PySide6.QtWidgets import QApplication
-
+from app.services.bootstrap_service import BootstrapService
+from app.services.dependency_service import DependencyService
+from app.services.log_service import configure_logging
 from app.services.path_service import PathService
 from app.services.profile_service import ProfileService
-from app.ui.login_dialog import LoginDialog
-from app.ui.main_window import MainWindow
-from app.ui.theme import SPACE_THEME_QSS
+
+LOGGER = logging.getLogger(__name__)
+
+
+def _install_global_exception_handler() -> None:
+    """Install a global exception handler that logs tracebacks and shows a dialog."""
+
+    def handle_exception(
+        exc_type: type[BaseException],
+        exc_value: BaseException,
+        exc_traceback: TracebackType | None,
+    ) -> None:
+        if issubclass(exc_type, KeyboardInterrupt):
+            sys.__excepthook__(exc_type, exc_value, exc_traceback)
+            return
+
+        crash_text = "".join(traceback.format_exception(exc_type, exc_value, exc_traceback))
+        LOGGER.critical("Unhandled exception:\n%s", crash_text)
+        try:
+            from PySide6.QtWidgets import QMessageBox
+
+            QMessageBox.critical(
+                None,
+                "Application Error",
+                "An unexpected error occurred. See logs/app.log for details.",
+            )
+        except Exception:
+            pass
+
+    sys.excepthook = handle_exception
+
+
+def _check_dev_dependencies() -> bool:
+    missing = DependencyService.missing_runtime_modules()
+    if not missing:
+        return True
+
+    message = "Missing Python packages: " + ", ".join(missing) + "\nPlease run: pip install -r requirements.txt"
+    print(message)
+    return False
 
 
 def main() -> int:
+    configure_logging(PathService.logs_dir() / "app.log")
+    _install_global_exception_handler()
+    LOGGER.info("Application startup")
+
+    if not _check_dev_dependencies():
+        return 1
+
+    from PySide6.QtWidgets import QApplication
+
+    from app.ui.login_dialog import LoginDialog
+    from app.ui.main_window import MainWindow
+    from app.ui.theme import SPACE_THEME_QSS
+
+    BootstrapService.ensure_directories()
+    profile_service = ProfileService(PathService.default_app_profiles_dir())
+    bootstrap_service = BootstrapService(profile_service)
+    bootstrap_service.initialize_database_and_default_user()
+
     app = QApplication(sys.argv)
     app.setStyleSheet(SPACE_THEME_QSS)
 
-    profile_service = ProfileService(PathService.default_app_profiles_dir())
-
     login = LoginDialog(profile_service)
     if login.exec() != login.Accepted or not login.selected_username:
+        LOGGER.info("Application closed from login dialog")
         return 0
 
     window = MainWindow(login.selected_username, profile_service)
