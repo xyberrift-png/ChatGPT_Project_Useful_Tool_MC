@@ -29,12 +29,7 @@ class ModInstallerDialog(QDialog):
 
         self.selected_paths: list[Path] = []
 
-        try:
-            default_minecraft_dir = self.service.default_minecraft_dir()
-        except KeyError:
-            default_minecraft_dir = Path()
 
-        self.minecraft_dir = QLineEdit(str(default_minecraft_dir))
         self.file_list = QListWidget()
         self.append_mode = QRadioButton("Append")
         self.overwrite_mode = QRadioButton("Overwrite")
@@ -95,9 +90,6 @@ class ModInstallerDialog(QDialog):
             QMessageBox.warning(self, "Installer", "No compatible .jar files selected.")
             return
         minecraft_dir = Path(self.minecraft_dir.text().strip())
-        if not minecraft_dir.exists() or minecraft_dir.name.lower() != ".minecraft":
-            QMessageBox.warning(self, "Minecraft", "Minecraft directory not found.")
-            return
 
         mode: InstallMode = "overwrite" if self.overwrite_mode.isChecked() else "append"
 
@@ -131,18 +123,6 @@ class ModInstallerDialog(QDialog):
             progress.setLabelText(text)
             progress.setValue(int((current / max(1, total)) * 100))
 
-        try:
-            installed = self.service.install(
-                self.selected_paths,
-                minecraft_dir,
-                mode,
-                replace_duplicates,
-                progress=update_install,
-            )
-        except ValueError as exc:
-            QMessageBox.warning(self, "Minecraft", str(exc))
-            return
 
-        progress.setValue(100)
         QMessageBox.information(self, "Install Complete", f"Installed {len(installed)} mods.")
         self.accept()

@@ -63,7 +63,7 @@ def main() -> int:
     BootstrapService(profile_service).initialize_database_and_default_user()
     LOGGER.info("Database bootstrap completed")
 
-    from PySide6.QtWidgets import QApplication, QDialog
+
 
     from app.ui.login_dialog import LoginDialog
     from app.ui.main_window import MainWindow
@@ -73,7 +73,7 @@ def main() -> int:
     app.setStyleSheet(SPACE_THEME_QSS)
 
     login = LoginDialog(profile_service)
-    if login.exec() != QDialog.Accepted or not login.selected_username:
+
         LOGGER.info("Application closed from login dialog")
         return 0
 
