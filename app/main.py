@@ -1,10 +1,10 @@
 from __future__ import annotations
 
 import sys
-from pathlib import Path
 
 from PySide6.QtWidgets import QApplication
 
+from app.services.path_service import PathService
 from app.services.profile_service import ProfileService
 from app.ui.login_dialog import LoginDialog
 from app.ui.main_window import MainWindow
@@ -15,8 +15,7 @@ def main() -> int:
     app = QApplication(sys.argv)
     app.setStyleSheet(SPACE_THEME_QSS)
 
-    app_data = Path.cwd() / "local_data" / "profiles"
-    profile_service = ProfileService(app_data)
+    profile_service = ProfileService(PathService.default_app_profiles_dir())
 
     login = LoginDialog(profile_service)
     if login.exec() != login.Accepted or not login.selected_username:

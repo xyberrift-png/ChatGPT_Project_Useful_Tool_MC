@@ -2,6 +2,7 @@ from __future__ import annotations
 
 from pathlib import Path
 
+from PySide6.QtCore import Qt
 from PySide6.QtWidgets import (
     QFileDialog,
     QHBoxLayout,
@@ -9,12 +10,13 @@ from PySide6.QtWidgets import (
     QLineEdit,
     QListWidget,
     QMessageBox,
+    QProgressDialog,
     QRadioButton,
     QVBoxLayout,
     QDialog,
 )
 
-from app.services.mod_installer_service import ModInstallerService
+from app.services.mod_installer_service import InstallMode, ModInstallerService
 from app.ui.widgets import AnimatedButton
 
 
@@ -66,7 +68,20 @@ class ModInstallerDialog(QDialog):
         selections = [Path(f) for f in files]
         if folder:
             selections.append(Path(folder))
-        self.selected_paths = self.service.collect_mod_files(selections)
+
+        progress = QProgressDialog("Scanning for compatible mods...", "Cancel", 0, 100, self)
+        progress.setWindowModality(Qt.WindowModal)
+        progress.setMinimumDuration(0)
+
+        def update_scan(current: int, total: int, text: str) -> None:
+            if progress.wasCanceled():
+                return
+            progress.setLabelText(text)
+            progress.setValue(int((current / max(1, total)) * 100))
+
+        self.selected_paths = self.service.collect_mod_files(selections, progress=update_scan)
+        progress.setValue(100)
+
         self.file_list.clear()
         self.file_list.addItems([str(p) for p in self.selected_paths])
 
@@ -75,7 +90,7 @@ class ModInstallerDialog(QDialog):
             QMessageBox.warning(self, "Installer", "No compatible .jar files selected.")
             return
         minecraft_dir = Path(self.minecraft_dir.text().strip())
-        mode = "overwrite" if self.overwrite_mode.isChecked() else "append"
+        mode: InstallMode = "overwrite" if self.overwrite_mode.isChecked() else "append"
 
         if mode == "overwrite":
             deletions = self.service.files_to_delete_on_overwrite(minecraft_dir)
@@ -96,6 +111,25 @@ class ModInstallerDialog(QDialog):
             QMessageBox.Yes | QMessageBox.No,
         )
         replace_duplicates = replace == QMessageBox.Yes
-        installed = self.service.install(self.selected_paths, minecraft_dir, mode, replace_duplicates)
+
+        progress = QProgressDialog("Installing mods...", "Cancel", 0, 100, self)
+        progress.setWindowModality(Qt.WindowModal)
+        progress.setMinimumDuration(0)
+
+        def update_install(current: int, total: int, text: str) -> None:
+            if progress.wasCanceled():
+                return
+            progress.setLabelText(text)
+            progress.setValue(int((current / max(1, total)) * 100))
+
+        installed = self.service.install(
+            self.selected_paths,
+            minecraft_dir,
+            mode,
+            replace_duplicates,
+            progress=update_install,
+        )
+        progress.setValue(100)
+
         QMessageBox.information(self, "Install Complete", f"Installed {len(installed)} mods.")
         self.accept()

@@ -2,20 +2,22 @@ from __future__ import annotations
 
 from pathlib import Path
 
+from PySide6.QtCore import Qt
 from PySide6.QtWidgets import (
     QFileDialog,
+    QComboBox,
     QHBoxLayout,
+    QInputDialog,
     QLabel,
     QLineEdit,
     QListWidget,
     QListWidgetItem,
     QMainWindow,
     QMessageBox,
-    QInputDialog,
+    QProgressDialog,
     QTextEdit,
     QVBoxLayout,
     QWidget,
-    QComboBox,
 )
 
 from app.services.mod_installer_service import ModInstallerService
@@ -148,8 +150,20 @@ class MainWindow(QMainWindow):
         parent = QFileDialog.getExistingDirectory(self, "Select Export Destination")
         if not parent:
             return
+
+        progress = QProgressDialog("Exporting profile...", "Cancel", 0, 100, self)
+        progress.setWindowModality(Qt.WindowModal)
+        progress.setMinimumDuration(0)
+
+        def on_progress(current: int, total: int, text: str) -> None:
+            if progress.wasCanceled():
+                return
+            progress.setLabelText(text)
+            progress.setValue(int((current / max(1, total)) * 100))
+
         try:
-            path = self.profile_service.export_profile(username.strip(), password, Path(parent))
+            path = self.profile_service.export_profile(username.strip(), password, Path(parent), progress=on_progress)
+            progress.setValue(100)
             QMessageBox.information(self, "Export", f"Exported to:\n{path}")
         except ValueError as exc:
             QMessageBox.warning(self, "Export Failed", str(exc))
@@ -158,8 +172,20 @@ class MainWindow(QMainWindow):
         source = QFileDialog.getExistingDirectory(self, "Select Profile Folder to Import")
         if not source:
             return
+
+        progress = QProgressDialog("Importing profile...", "Cancel", 0, 100, self)
+        progress.setWindowModality(Qt.WindowModal)
+        progress.setMinimumDuration(0)
+
+        def on_progress(current: int, total: int, text: str) -> None:
+            if progress.wasCanceled():
+                return
+            progress.setLabelText(text)
+            progress.setValue(int((current / max(1, total)) * 100))
+
         try:
-            username = self.profile_service.import_profile(Path(source))
+            username = self.profile_service.import_profile(Path(source), progress=on_progress)
+            progress.setValue(100)
             QMessageBox.information(self, "Import", f"Imported profile: {username}")
         except ValueError as exc:
             QMessageBox.warning(self, "Import Failed", str(exc))

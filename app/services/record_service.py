@@ -2,9 +2,13 @@ from __future__ import annotations
 
 from datetime import datetime
 from pathlib import Path
+from typing import Literal
 
 from app.data.record_repository import RecordRepository
 from app.models.record import PvPRecord, RecordCategory
+
+
+SortMode = Literal["date", "rating"]
 
 
 class RecordService:
@@ -35,7 +39,7 @@ class RecordService:
     def latest(self, limit: int = 3) -> list[PvPRecord]:
         return self.repository.latest(limit)
 
-    def list_records(self, sort_mode: str = "date") -> list[PvPRecord]:
+    def list_records(self, sort_mode: SortMode = "date") -> list[PvPRecord]:
         if sort_mode == "rating":
             return self.repository.all_by_rating()
         return self.repository.all_by_date()
