@@ -1,6 +1,7 @@
 from __future__ import annotations
 
 import argparse
+import getpass
 import sys
 from pathlib import Path
 
@@ -31,10 +32,7 @@ def build_parser() -> argparse.ArgumentParser:
     sub = parser.add_subparsers(dest="command", required=True)
 
     sub.add_parser("list-profiles", help="List local profiles")
-
-    create_user = sub.add_parser("create-user", help="Create a local profile user")
-    create_user.add_argument("username", help="New username")
-    create_user.add_argument("password", help="New password")
+    sub.add_parser("create-user", help="Create a local profile user")
 
     scan = sub.add_parser("scan-mods", help="Scan files/folders for .jar mods")
     scan.add_argument("paths", nargs="+", help="Files or folders to scan")
@@ -58,7 +56,13 @@ def list_profiles(service: ProfileService) -> int:
     return 0
 
 
-def create_user(service: ProfileService, username: str, password: str) -> int:
+def create_user(service: ProfileService) -> int:
+    username = console.input("Username: ").strip()
+    password = getpass.getpass("Password: ")
+    if not username or not password:
+        console.print("[red]Username and password are required.[/red]")
+        return 1
+
     try:
         service.create_profile(username, password)
     except ValueError as exc:
@@ -107,7 +111,7 @@ def main() -> int:
         return 1
 
     BootstrapService.ensure_directories()
-    profile_service = ProfileService(PathService.default_app_profiles_dir())
+    profile_service = ProfileService(PathService.default_app_profiles_dir(), PathService.user_database_path())
     BootstrapService(profile_service).initialize_database_and_default_user()
 
     parser = build_parser()
@@ -116,7 +120,7 @@ def main() -> int:
     if args.command == "list-profiles":
         return list_profiles(profile_service)
     if args.command == "create-user":
-        return create_user(profile_service, args.username, args.password)
+        return create_user(profile_service)
     if args.command == "scan-mods":
         return scan_mods(args.paths)
 

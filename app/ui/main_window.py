@@ -3,6 +3,7 @@ from __future__ import annotations
 from pathlib import Path
 
 from PySide6.QtCore import Qt
+from PySide6.QtGui import QAction
 from PySide6.QtWidgets import (
     QFileDialog,
     QComboBox,
@@ -25,6 +26,7 @@ from app.services.profile_service import ProfileService
 from app.services.record_service import RecordService
 from app.ui.mod_installer_dialog import ModInstallerDialog
 from app.ui.record_dialog import RecordDialog
+from app.ui.user_management_dialog import UserManagementDialog
 from app.ui.widgets import AnimatedButton
 
 
@@ -37,6 +39,8 @@ class MainWindow(QMainWindow):
         self.record_service = RecordService(self.profile_dir)
         self.setWindowTitle(f"Minecraft PvP Hub - {username}")
         self.resize(900, 600)
+
+        self._setup_admin_menu_if_needed()
 
         self.search_input = QLineEdit()
         self.search_input.setPlaceholderText("Search by date/title")
@@ -93,6 +97,19 @@ class MainWindow(QMainWindow):
 
         self.refresh_latest()
         self.refresh_all()
+
+    def _setup_admin_menu_if_needed(self) -> None:
+        if self.username != "admin":
+            return
+
+        admin_menu = self.menuBar().addMenu("Admin")
+        user_mgmt_action = QAction("User Management", self)
+        user_mgmt_action.triggered.connect(self.open_user_management)
+        admin_menu.addAction(user_mgmt_action)
+
+    def open_user_management(self) -> None:
+        dialog = UserManagementDialog(self.profile_service, self.username, self)
+        dialog.exec()
 
     def refresh_latest(self) -> None:
         self.latest_list.clear()

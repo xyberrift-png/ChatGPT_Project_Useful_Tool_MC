@@ -1,18 +1,16 @@
 from __future__ import annotations
 
-import sys
 from pathlib import Path
+
+from app.utils.path_utils import get_app_root
 
 
 class PathService:
-    """Path utilities that work in both source and frozen distributions."""
+    """Path utilities for writable app data, logs, and resources."""
 
     @staticmethod
     def get_app_root() -> Path:
-        """Return application root for Python and PyInstaller execution modes."""
-        if getattr(sys, "frozen", False):
-            return Path(sys.executable).resolve().parent
-        return Path(__file__).resolve().parents[2]
+        return get_app_root()
 
     @classmethod
     def data_dir(cls) -> Path:
@@ -21,6 +19,10 @@ class PathService:
     @classmethod
     def logs_dir(cls) -> Path:
         return cls.get_app_root() / "logs"
+
+    @classmethod
+    def user_database_path(cls) -> Path:
+        return cls.data_dir() / "users.db"
 
     @classmethod
     def default_app_profiles_dir(cls) -> Path:

@@ -15,7 +15,7 @@ LOGGER = logging.getLogger(__name__)
 
 
 def _install_global_exception_handler() -> None:
-    """Install a global exception handler that logs tracebacks and shows a dialog."""
+    """Install global error handling for GUI crash visibility and logging."""
 
     def handle_exception(
         exc_type: type[BaseException],
@@ -31,11 +31,7 @@ def _install_global_exception_handler() -> None:
         try:
             from PySide6.QtWidgets import QMessageBox
 
-            QMessageBox.critical(
-                None,
-                "Application Error",
-                "An unexpected error occurred. See logs/app.log for details.",
-            )
+            QMessageBox.critical(None, "Application Error", "An unexpected error occurred. Check logs for details.")
         except Exception:
             pass
 
@@ -47,12 +43,15 @@ def _check_dev_dependencies() -> bool:
     if not missing:
         return True
 
-    message = "Missing Python packages: " + ", ".join(missing) + "\nPlease run: pip install -r requirements.txt"
-    print(message)
+    print("Please run: pip install -r requirements.txt")
     return False
 
 
 def main() -> int:
+    # 1) Run bootstrap directory setup first.
+    BootstrapService.ensure_directories()
+
+    # 2) Initialize logging.
     configure_logging(PathService.logs_dir() / "app.log")
     _install_global_exception_handler()
     LOGGER.info("Application startup")
@@ -60,16 +59,15 @@ def main() -> int:
     if not _check_dev_dependencies():
         return 1
 
+    profile_service = ProfileService(PathService.default_app_profiles_dir(), PathService.user_database_path())
+    BootstrapService(profile_service).initialize_database_and_default_user()
+    LOGGER.info("Database bootstrap completed")
+
     from PySide6.QtWidgets import QApplication
 
     from app.ui.login_dialog import LoginDialog
     from app.ui.main_window import MainWindow
     from app.ui.theme import SPACE_THEME_QSS
-
-    BootstrapService.ensure_directories()
-    profile_service = ProfileService(PathService.default_app_profiles_dir())
-    bootstrap_service = BootstrapService(profile_service)
-    bootstrap_service.initialize_database_and_default_user()
 
     app = QApplication(sys.argv)
     app.setStyleSheet(SPACE_THEME_QSS)

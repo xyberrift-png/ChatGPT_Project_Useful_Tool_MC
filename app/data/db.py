@@ -14,7 +14,7 @@ class DatabaseManager:
         connection.row_factory = sqlite3.Row
         return connection
 
-    def initialize(self) -> None:
+    def initialize_records(self) -> None:
         with self.connect() as conn:
             conn.execute(
                 """
@@ -29,3 +29,20 @@ class DatabaseManager:
                 )
                 """
             )
+
+    def initialize_users(self) -> None:
+        with self.connect() as conn:
+            conn.execute(
+                """
+                CREATE TABLE IF NOT EXISTS users (
+                    id INTEGER PRIMARY KEY AUTOINCREMENT,
+                    username TEXT NOT NULL UNIQUE,
+                    password_hash TEXT NOT NULL,
+                    created_at TEXT NOT NULL
+                )
+                """
+            )
+
+    def initialize(self) -> None:
+        self.initialize_records()
+        self.initialize_users()

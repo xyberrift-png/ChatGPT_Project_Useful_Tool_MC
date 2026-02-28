@@ -11,7 +11,7 @@ from app.models.record import PvPRecord, RecordCategory
 class RecordRepository:
     def __init__(self, db_path: Path) -> None:
         self.db = DatabaseManager(db_path)
-        self.db.initialize()
+        self.db.initialize_records()
 
     def create(self, record: PvPRecord) -> int:
         with self.db.connect() as conn:
