@@ -63,8 +63,7 @@ class ModInstallerService:
         replace_duplicates: bool,
         progress: ProgressCallback | None = None,
     ) -> list[str]:
-        mods_dir = minecraft_dir / "mods"
-        mods_dir.mkdir(parents=True, exist_ok=True)
+
         installed: list[str] = []
 
         if mode == "overwrite":

@@ -20,7 +20,7 @@ class BootstrapService:
             PathService.data_dir(),
             PathService.logs_dir(),
             PathService.default_app_profiles_dir(),
-            PathService.default_minecraft_dir(),
+
         ):
             path.mkdir(parents=True, exist_ok=True)
 
